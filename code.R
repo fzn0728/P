@@ -77,20 +77,21 @@ equal_weight_return_Q$cumReturn <- cumprod(equal_weight_return_Q[,1])
 Weight_Q <- Weight_Q[(Weight_Q$TICKER %in% rebalance_Q$Ticker),] # get the common of rebalance_Q and Weight_Q
 Weight_Q[is.na(Weight_Q)] <- 0 # replace NA with 0
 
-# Get the market cap weighting dataframe
+# Get the market cap weighting dataframe : This is the weight which is used to calculate the next perioed market weighted return
+# I adjust the prior bias since we use the lag rebalance table * weight_Q
 watchList_market_weight_Q <- return_Q[0:nrow(Weight_Q),]
-for (i in (0:(length(Weight_Q)-3))){
-  watchList_market_weight_Q[,i+3] <- rebalance_Q[,i+2]*Weight_Q[,i+3]
+for (i in (0:(length(Weight_Q)-4))){
+  watchList_market_weight_Q[,i+3] <- rebalance_Q[,i+3]*Weight_Q[,i+3]
 }
 watchList_market_weight_Q[is.na(watchList_market_weight_Q)] <- 0
 
 # Calculate the market weight return considering the watchlist market weight 
-market_weight_return_Q <- return_Q[0:2,-1:-2]
-for (j in (1:length(market_weight_return_Q))){
-  market_weight_return_Q[2,j] <- sum(watchList_market_weight_Q[,j+2])
-  market_weight_return_Q[1,j] <- sum(watchList_return_Q[,j+2]*(watchList_market_weight_Q[,j+2]/market_weight_return_Q[2,j]))
+market_weight_return_Q <- return_Q[0:1,-1:-2]
+for (j in (1:(length(market_weight_return_Q)-1))){
+  market_weight_return_Q[1,j+1] <- sum(watchList_return_Q[,j+3]*(watchList_market_weight_Q[,j+2]/sum(watchList_market_weight_Q[,j+2])))
 }
 market_weight_return_Q <- data.frame(t(market_weight_return_Q))
+market_weight_return_Q[1,1] <- 1 # Let 2005Q1 return equal to one since we skip the Q1 calculation, since we don't know the rebalance table of 2004 Q4
 market_weight_return_Q$cumReturn <- cumprod(market_weight_return_Q[,1])
 
 #################################### Russell Index ####################################
@@ -130,7 +131,7 @@ industry_return[is.na(industry_return)] <- 0
 ### Calculate the weight of each industry in the watchlist
 # Calculate the market value table
 industry_mkt <- watchList_market_weight_Q %>%
-  gather(date_Q,MKT,X2005.Q1:X2015.Q4) %>%
+  gather(date_Q,MKT,X2005.Q1:X2015.Q3) %>% # 2015 Q4 is not available, since we don't know the next period rebalance table
   group_by(date_Q,Industry) %>%
   filter(MKT>0) %>%
   summarise(MKT = sum(MKT, na.rm=TRUE)) %>%
