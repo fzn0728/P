@@ -1,7 +1,6 @@
 # Return Calculation
 # Zhongnan Fang
-# June 30, 2016
-### I may forgot one thing like rebalancing?? using last month average
+# July 6, 2016
 
 #################################### Data cleaning ####################################
 library(zoo)
@@ -11,7 +10,7 @@ options(scipen=50)
 setwd("C:/Users/Chandler/Desktop/PPC/Data")
 
 ### Generate the dataframe of rawdata and clean the format
-stock.df <- read.csv("RawData_new.csv", header = TRUE)
+stock.df <- read.csv("RawData_all.csv", header = TRUE)
 stock.df <-subset(stock.df, select = c("Date","SICCD","TICKER","PRC","RET","SHROUT"))
 stock.df$date_Q <- as.yearqtr(as.character(stock.df$Date),format = "%m/%d/%Y")
 stock.df$date_M <- as.yearmon(as.character(stock.df$Date),format = "%m/%d/%Y")
@@ -40,9 +39,16 @@ load("stock_new.Rdata")
 #################################### Return Calculation ####################################
 ### Generate return dataframe 
 return_Q <- spread(stock_Q,date_Q,x)
+n <- names(return_Q)[-c(3:11)]
+n_for_weight <- names(return_Q)[-c(3:10,54)]
+return_Q <- return_Q[,n]
 colnames(return_Q) <- make.names(colnames(return_Q), unique=TRUE)
+
+### Generate weighting matrix -> from 2004Q4
 Weight_Q <- spread(MKT_Q,date_Q,x)
+Weight_Q <- Weight_Q[,n_for_weight]
 colnames(Weight_Q) <- make.names(colnames(Weight_Q), unique=TRUE)
+
 
 ### get wired data
 # wired.stock.df <- stock.df[stock.df$R>1.1 | stock.df$R<0.9,]
@@ -65,9 +71,9 @@ watchList_return_Q[is.na(watchList_return_Q)] <- 0
 ### Calcualate equal weight return
 # Borrow the table structure from the return_Q
 equal_weight_return_Q <- return_Q[0:2,-1:-2]
-for (j in (1:(length(equal_weight_return_Q)-1))){
-  equal_weight_return_Q[2,j+1] <- sum(watchList_return_Q[,j+2]>0)
-  equal_weight_return_Q[1,j+1] <- sum(watchList_return_Q[,j+2])/equal_weight_return_Q[2,j+1]
+for (j in (0:(length(equal_weight_return_Q)-1))){
+  equal_weight_return_Q[2,j+1] <- sum(watchList_return_Q[,j+3]>0)
+  equal_weight_return_Q[1,j+1] <- sum(watchList_return_Q[,j+3])/equal_weight_return_Q[2,j+1]
 }
 equal_weight_return_Q <- data.frame(t(equal_weight_return_Q))
 equal_weight_return_Q$cumReturn <- cumprod(equal_weight_return_Q[,1])
@@ -79,19 +85,19 @@ Weight_Q[is.na(Weight_Q)] <- 0 # replace NA with 0
 
 # Get the market cap weighting dataframe : This is the weight which is used to calculate the next perioed market weighted return
 # I adjust the prior bias since we use the lag rebalance table * weight_Q
-watchList_market_weight_Q <- return_Q[0:nrow(Weight_Q),]
-for (i in (0:(length(Weight_Q)-4))){
-  watchList_market_weight_Q[,i+3] <- rebalance_Q[,i+3]*Weight_Q[,i+3]
+watchList_market_weight_Q <- Weight_Q[0:nrow(Weight_Q),]
+for (i in (0:(length(Weight_Q)-3))){
+  watchList_market_weight_Q[,i+3] <- rebalance_Q[,i+2]*Weight_Q[,i+3]
 }
 watchList_market_weight_Q[is.na(watchList_market_weight_Q)] <- 0
 
 # Calculate the market weight return considering the watchlist market weight 
 market_weight_return_Q <- return_Q[0:1,-1:-2]
-for (j in (1:(length(market_weight_return_Q)-1))){
-  market_weight_return_Q[1,j+1] <- sum(watchList_return_Q[,j+3]*(watchList_market_weight_Q[,j+2]/sum(watchList_market_weight_Q[,j+2])))
+for (j in (0:(length(market_weight_return_Q)-1))){
+  market_weight_return_Q[1,j+1] <- sum(watchList_return_Q[,j+3]*(watchList_market_weight_Q[,j+3]/sum(watchList_market_weight_Q[,j+3])))
 }
 market_weight_return_Q <- data.frame(t(market_weight_return_Q))
-market_weight_return_Q[1,1] <- 1 # Let 2005Q1 return equal to one since we skip the Q1 calculation, since we don't know the rebalance table of 2004 Q4
+#market_weight_return_Q[1,1] <- 1 # Let 2005Q1 return equal to one since we skip the Q1 calculation, since we don't know the rebalance table of 2004 Q4
 market_weight_return_Q$cumReturn <- cumprod(market_weight_return_Q[,1])
 
 #################################### Russell Index ####################################
@@ -159,6 +165,7 @@ for (i in (1:(length(industry_mkt)-1))){
 }
 
 #################################### Table Output ####################################
+# write.csv(stock.df,file='stockdf.csv')
 # write.csv(stock_Q,file='stock_Q.csv')
 # write.csv(stock_M,file='stock_M.csv')
 # write.csv(stock_list,file='stock_list.csv')
