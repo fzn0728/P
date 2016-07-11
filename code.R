@@ -1,6 +1,6 @@
 # Return Calculation
 # Zhongnan Fang
-# July 6, 2016
+# June 30, 2016
 
 #################################### Data cleaning ####################################
 library(zoo)
@@ -13,7 +13,6 @@ setwd("C:/Users/Chandler/Desktop/PPC/Data")
 stock.df <- read.csv("RawData_all.csv", header = TRUE)
 stock.df <-subset(stock.df, select = c("Date","SICCD","TICKER","PRC","RET","SHROUT"))
 stock.df$date_Q <- as.yearqtr(as.character(stock.df$Date),format = "%m/%d/%Y")
-stock.df$date_M <- as.yearmon(as.character(stock.df$Date),format = "%m/%d/%Y")
 stock.df$MKT <- stock.df$PRC*stock.df$SHROUT
 stock.df$R <- 1 + as.numeric(as.character(stock.df$RET))
 
@@ -127,7 +126,7 @@ russell_industry.df$date_Q <- as.yearqtr(as.character(russell_industry.df$Date),
 #################################### Industry Return Calculation ####################################
 ### Calculate return by industry
 industry_return <- watchList_return_Q %>%
-  gather(date_Q,Return,X2005.Q1:X2015.Q4) %>%
+  gather(date_Q,Return,X2005.Q2:X2015.Q4) %>%
   group_by(date_Q,Industry) %>%
   filter(Return>0) %>%
   summarise(Return = mean(Return, na.rm=TRUE)) %>%
@@ -136,31 +135,31 @@ industry_return[is.na(industry_return)] <- 0
 
 ### Calculate the weight of each industry in the watchlist
 # Calculate the market value table
-industry_mkt <- watchList_market_weight_Q %>%
+industry_mkt_weight <- watchList_market_weight_Q %>%
   gather(date_Q,MKT,X2005.Q1:X2015.Q3) %>% # 2015 Q4 is not available, since we don't know the next period rebalance table
   group_by(date_Q,Industry) %>%
   filter(MKT>0) %>%
   summarise(MKT = sum(MKT, na.rm=TRUE)) %>%
   spread(date_Q, MKT)
-industry_mkt[is.na(industry_mkt)] <- 0
+industry_mkt_weight[is.na(industry_mkt_weight)] <- 0
 
 # Add Sum column
-n <- nrow(industry_mkt)
-for (i in (1:(length(industry_mkt)-1))){
-  industry_mkt[n+1,i+1] <- sum(industry_mkt[1:n,i+1])
+n <- nrow(industry_mkt_weight)
+for (i in (1:(length(industry_mkt_weight)-1))){
+  industry_mkt_weight[n+1,i+1] <- sum(industry_mkt_weight[1:n,i+1])
 }
 
 # Change the type of Industry Column
-industry_mkt$Industry <- as.character(industry_mkt$Industry)
+industry_mkt_weight$Industry <- as.character(industry_mkt_weight$Industry)
 
 # Replace the NA value
-industry_mkt$Industry[is.na(industry_mkt$Industry)] = 'Sum'
+industry_mkt_weight$Industry[is.na(industry_mkt_weight$Industry)] = 'Sum'
 
 # Get the market value weight
-industry_mkt_weight <- industry_mkt
-for (i in (1:(length(industry_mkt)-1))){
+industry_mkt_weight_percent<- industry_mkt_weight
+for (i in (1:(length(industry_mkt_weight_percent)-1))){
   for (j in (1:(n+1))){
-    industry_mkt_weight[j,i+1] <- industry_mkt[j,i+1]/industry_mkt[n+1,i+1]
+    industry_mkt_weight_percent[j,i+1] <- industry_mkt_weight[j,i+1]/industry_mkt_weight[n+1,i+1]
   }
 }
 
@@ -171,16 +170,16 @@ for (i in (1:(length(industry_mkt)-1))){
 # write.csv(stock_list,file='stock_list.csv')
 # write.csv(return_Q$TICKER,file="TICKER.csv")
 # write.csv(rebalance_Q,file='rebalance.csv')
-# write.csv(return_Q,file='return_Q.csv')
-# write.csv(watchList_return_Q,file='watchList_return_Q.csv')
-# write.csv(equal_weight_return_Q,file='equal_weight_return_Q.csv')
-# write.csv(market_weight_return_Q,file='market_weight_return_Q.csv')
+write.csv(return_Q,file='return_Q.csv')
+write.csv(watchList_return_Q,file='watchList_return_Q.csv')
+write.csv(equal_weight_return_Q,file='equal_weight_return_Q.csv')
+write.csv(market_weight_return_Q,file='market_weight_return_Q.csv')
 
 
 ### Russell
-# write.csv(russell_return_Q, file = "russell_return_Q.csv")
+write.csv(russell_return_Q, file = "russell_return_Q.csv")
 
 ### Industry of Watchlist
-# write.csv(industry_return,file='industry_return.csv')
-# write.csv(industry_mkt,file='industry_mkt.csv')
-# write.csv(industry_mkt_weight,file='industry_mkt_weight.csv')
+write.csv(industry_return,file='industry_return.csv')
+# write.csv(industry_mkt_weight,file='industry_mkt_weight')
+write.csv(industry_mkt_weight_percent,file='industry_mkt_weight_percent.csv')
