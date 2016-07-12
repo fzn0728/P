@@ -1,6 +1,6 @@
 # Return Calculation
 # Zhongnan Fang
-# June 30, 2016
+# July 11, 2016
 
 #################################### Data cleaning ####################################
 library(zoo)
@@ -10,11 +10,15 @@ options(scipen=50)
 setwd("C:/Users/Chandler/Desktop/PPC/Data")
 
 ### Generate the dataframe of rawdata and clean the format
-stock.df <- read.csv("RawData_all.csv", header = TRUE)
-stock.df <-subset(stock.df, select = c("Date","SICCD","TICKER","PRC","RET","SHROUT"))
+stock.df <- read.csv("RawData_all(1).csv", header = TRUE)
+stock.df <-subset(stock.df, select = c("PERMNO","Date","SICCD","TICKER","PRC","RET","SHROUT"))
 stock.df$date_Q <- as.yearqtr(as.character(stock.df$Date),format = "%m/%d/%Y")
 stock.df$MKT <- stock.df$PRC*stock.df$SHROUT
 stock.df$R <- 1 + as.numeric(as.character(stock.df$RET))
+
+# Drop duplicate data
+permno <- c(90842,89917,92468,90217,83559,81651,46068)
+stock.df <- stock.df[!(stock.df$PERMNO %in% permno),]
 
 # Import the stock industry data
 industry.df <- read.csv("industry.csv",header = TRUE)
@@ -183,3 +187,9 @@ write.csv(russell_return_Q, file = "russell_return_Q.csv")
 write.csv(industry_return,file='industry_return.csv')
 # write.csv(industry_mkt_weight,file='industry_mkt_weight')
 write.csv(industry_mkt_weight_percent,file='industry_mkt_weight_percent.csv')
+
+
+# n <- c('WSO','CSTR','DORM','FICO','NSP','NUAN','OPEN','SLH','SSNC','PLB','PSTI','WEX')
+# z <- stock.df[stock.df$TICKER %in% n,]
+# 
+# write.csv(z,file='z.csv')
